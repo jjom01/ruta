@@ -1,0 +1,7 @@
+{
+  "_nota": "Tarifa vigente del pasaje. Actualizar cuando el Distrito la cambie (la de 2027 aún no está definida).",
+  "cop": 3550,
+  "since": "2026-01-14",
+  "scope": "TransMilenio, TransMiZonal y TransMiCable (tarifa unificada)",
+  "source": "https://bogota.gov.co/mi-ciudad/movilidad/tarifa-transmilenio-transmicable-y-transmizonal-2026-bogota"
+}

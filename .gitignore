@@ -1,0 +1,13 @@
+# secretos y datos locales
+.env.local
+.env*.local
+.credits.json
+
+# dependencias y cachés
+node_modules/
+.expo/
+backend/tools/.cache/
+
+# sistema y registros
+.DS_Store
+*.log

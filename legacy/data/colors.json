@@ -1,0 +1,111 @@
+{
+  "_nota": "Fuente única de colores. Todas las letras salen de la carta oficial (capturas del usuario) y se usan tal cual en claro y oscuro; el contorno por contraste lo calcula la app.",
+  "routes": {
+    "A": {
+      "name": "Caracas",
+      "light": "#26358C",
+      "dark": "#26358C",
+      "verified": true
+    },
+    "B": {
+      "name": "Autopista Norte",
+      "light": "#81BA27",
+      "dark": "#81BA27",
+      "verified": true
+    },
+    "C": {
+      "name": "Suba",
+      "light": "#FCBE1A",
+      "dark": "#FCBE1A",
+      "verified": true
+    },
+    "D": {
+      "name": "Calle 80",
+      "light": "#8064A9",
+      "dark": "#8064A9",
+      "verified": true
+    },
+    "E": {
+      "name": "NQS Central",
+      "light": "#AE6B00",
+      "dark": "#AE6B00",
+      "verified": true
+    },
+    "F": {
+      "name": "Américas",
+      "light": "#DC0814",
+      "dark": "#DC0814",
+      "verified": true
+    },
+    "G": {
+      "name": "NQS Sur",
+      "light": "#019CDE",
+      "dark": "#019CDE",
+      "verified": true
+    },
+    "H": {
+      "name": "Caracas Sur",
+      "light": "#F18400",
+      "dark": "#F18400",
+      "verified": true
+    },
+    "J": {
+      "name": "Eje Ambiental",
+      "light": "#E1A2AC",
+      "dark": "#E1A2AC",
+      "verified": true
+    },
+    "K": {
+      "name": "Calle 26",
+      "light": "#D5B079",
+      "dark": "#D5B079",
+      "verified": true
+    },
+    "L": {
+      "name": "Carrera 10",
+      "light": "#019A9D",
+      "dark": "#019A9D",
+      "verified": true
+    },
+    "M": {
+      "name": "Carrera 7",
+      "light": "#019A9D",
+      "dark": "#019A9D",
+      "verified": true
+    },
+    "T": {
+      "name": "TransMiCable",
+      "light": "#808000",
+      "dark": "#808000",
+      "verified": true
+    },
+    "Z": {
+      "name": "Av. Ciudad de Cali",
+      "light": "#BD202A",
+      "dark": "#BD202A",
+      "verified": true
+    }
+  },
+  "land": {
+    "light": "#EBEBEB",
+    "dark": "#1A1A1A"
+  },
+  "fallback": {
+    "light": "#6B7280",
+    "dark": "#9CA3AF"
+  },
+  "ui": {
+    "light": {
+      "bg": "#FAFAF7",
+      "fg": "#111111",
+      "accent": "#FFE600",
+      "accentFg": "#111111"
+    },
+    "dark": {
+      "bg": "#0E0E0E",
+      "fg": "#F2F2EE",
+      "accent": "#FFE600",
+      "accentFg": "#111111"
+    }
+  }
+}

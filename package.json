@@ -1,0 +1,10 @@
+{
+  "name": "ruta",
+  "private": true,
+  "scripts": {
+    "start": "node backend/tools/build-sw.mjs && node backend/server.js",
+    "build:sw": "node backend/tools/build-sw.mjs",
+    "start:v1": "STATIC_DIR=../legacy node backend/server.js",
+    "phone:v1": "./legacy/phone.sh"
+  }
+}

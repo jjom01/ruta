@@ -1,0 +1,9 @@
+{
+  "realtime": {
+    "sources": [
+      { "url": "/api/rt", "format": "gtfs-rt" },
+      { "url": "/api/fleet", "format": "json" }
+    ],
+    "pollMs": 26000
+  }
+}

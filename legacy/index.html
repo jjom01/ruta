@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Ruta</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#111111">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&display=swap">
+</head>
+<body>
+  <div id="map"></div>
+  <div id="scan" hidden></div>
+  <header id="filters" aria-label="Filtros"></header>
+  <div id="menu" hidden role="menu"></div>
+  <div id="livePill" hidden role="status" aria-live="off"><i></i><span></span></div>
+  <button id="locate" class="icon-btn" aria-label="Ubicarme">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+  </button>
+  <button id="help" class="icon-btn" aria-label="Convenciones" aria-expanded="false">?</button>
+  <button id="alertsBtn" class="icon-btn" aria-label="Alertas" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></svg><b id="alertCount" hidden></b></button>
+  <section id="alerts" hidden aria-label="Alertas"></section>
+  <section id="legend" hidden aria-label="Convenciones"></section>
+  <section id="tripSheet" hidden aria-label="Viaje">
+    <div class="trip-head"><div class="trip-route"></div><button class="x" aria-label="Cerrar">×</button></div>
+    <div class="scroll"><div class="opts"></div></div>
+  </section>
+  <section id="panel" hidden aria-live="polite"></section>
+  <button id="homeBtn" class="icon-btn" aria-label="Inicio"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg></button>
+  <section id="home" hidden aria-label="Inicio">
+    <div class="home-scroll">
+      <header class="home-head"><h1><svg class="wordmark" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="150.79 176.76 771.73 186.48" role="img" aria-label="Ruta"><g fill="currentColor"><path d="M164.17,363.24c-3.7,0-6.69-2.99-6.69-6.69v-125.48c0-23.36,19.01-42.37,42.37-42.37h125.48c3.7,0,6.69,2.99,6.69,6.69s-2.99,6.69-6.69,6.69h-125.48c-15.99,0-28.99,13.01-28.99,28.99v125.48c0,3.7-2.99,6.69-6.69,6.69Z"/><path d="M718.99,363.24h-125.46c-23.36,0-42.37-19.01-42.37-42.37v-125.48c0-3.7,2.99-6.69,6.69-6.69s6.69,2.99,6.69,6.69v125.48c0,15.99,13.01,28.99,28.99,28.99h125.46c3.7,0,6.69,2.99,6.69,6.69s-2.99,6.69-6.69,6.69Z"/><path d="M880.15,363.24h-89.79c-23.36,0-42.37-19.01-42.37-42.37v-9.21c0-23.36,19.01-42.37,42.37-42.37h132.17v51.59c0,23.36-19.01,42.37-42.37,42.37ZM790.35,282.66c-15.99,0-28.99,13.01-28.99,28.99v9.21c0,15.99,13.01,28.99,28.99,28.99h89.79c15.99,0,28.99-13.01,28.99-28.99v-38.21h-118.79Z"/><path d="M915.83,282.66c-3.7,0-6.69-2.99-6.69-6.69v-44.9c0-15.99-13.01-28.99-28.99-28.99h-125.48c-3.7,0-6.69-2.99-6.69-6.69s2.99-6.69,6.69-6.69h125.48c23.36,0,42.37,19.01,42.37,42.37v44.9c0,3.7-2.99,6.69-6.69,6.69Z"/><path d="M528.86,363.24h-132.17c-23.36,0-42.37-19.01-42.37-42.37v-125.48c0-3.7,2.99-6.69,6.69-6.69s6.69,2.99,6.69,6.69v125.48c0,15.99,13.01,28.99,28.99,28.99h118.79v-154.47c0-3.7,2.99-6.69,6.69-6.69s6.69,2.99,6.69,6.69v167.85Z"/><path d="M719.01,282.66h-161.16c-3.7,0-6.69-2.99-6.69-6.69s2.99-6.69,6.69-6.69h161.16c3.7,0,6.69,2.99,6.69,6.69s-2.99,6.69-6.69,6.69Z"/></g><rect x="306.7" y="176.76" width="37.26" height="37.26" rx="5" fill="#FBE74D"/></svg></h1>
+        <div class="head-actions">
+          <a id="topup" class="chip maas" href="https://maasapp.co/" target="_blank" rel="noopener"></a>
+          <button id="balanceBtn" class="chip round" type="button" aria-haspopup="dialog"></button>
+        </div>
+      </header>
+      <h2 class="eyebrow" id="hParaderos"></h2>
+      <div id="homeTm"></div>
+      <div id="homeSitp" class="card"></div>
+      <div id="homeMap" class="card map-card" role="button" tabindex="0"><div id="homeMapEl"></div></div>
+      <h2 class="eyebrow" id="hViajar"></h2>
+      <form id="trip" class="card" autocomplete="off">
+        <div class="trip-fields">
+          <input id="tripFrom" type="text" enterkeyhint="next">
+          <input id="tripTo" type="text" enterkeyhint="search">
+          <button class="trip-go" type="submit" id="tripGo"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg></button>
+        </div>
+        <div id="tripOut"></div>
+      </form>
+    </div>
+  </section>
+  <div id="nfcSheet" class="nfc" role="dialog" aria-modal="true" aria-labelledby="nfcTitle" hidden>
+    <div class="nfc-card">
+      <button class="nfc-x" id="nfcX" type="button" aria-label="Cerrar">×</button>
+      <div class="nfc-art" aria-hidden="true"></div>
+      <h2 id="nfcTitle"></h2>
+      <p id="nfcMsg"></p>
+      <a id="nfcMaas" class="chip maas" href="https://maasapp.co/" target="_blank" rel="noopener" hidden></a>
+    </div>
+  </div>
+  <div id="onboarding" hidden></div>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="realtime.js"></script>
+  <script src="plan.js"></script>
+  <script src="trip.js"></script>
+  <script src="home.js"></script>
+  <script src="onboarding.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

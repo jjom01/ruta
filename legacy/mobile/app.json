@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Ruta",
+    "slug": "ruta",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#140C0E",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#140C0E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "co.ruta.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Ruta usa tu ubicación para mostrarte los paraderos cercanos y planear tu viaje.",
+        "NSAppTransportSecurity": { "NSAllowsLocalNetworking": true, "NSAllowsArbitraryLoadsInWebContent": true }
+      }
+    },
+    "android": {
+      "package": "co.ruta.app",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "adaptiveIcon": {
+        "backgroundColor": "#111111",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "plugins": [
+      ["expo-location", { "locationWhenInUsePermission": "Ruta usa tu ubicación para mostrarte los paraderos cercanos y planear tu viaje." }]
+    ],
+    "web": { "favicon": "./assets/favicon.png" }
+  }
+}

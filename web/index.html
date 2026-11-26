@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="format-detection" content="telephone=no">
+  <meta name="color-scheme" content="light dark">
+  <title>Ruta</title>
+  <script>try{var t=localStorage.getItem("ruta.theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t}}catch(e){}</script>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#F2F6F3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#140C0E" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-title" content="Ruta"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="prefetch" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" as="script" crossorigin>
+  <link rel="prefetch" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" as="style" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="preload" href="data/routes-index.json" as="fetch" crossorigin>
+  <link rel="preload" href="data/route-stops.json" as="fetch" crossorigin>
+  <link rel="preload" href="data/routes-meta.json" as="fetch" crossorigin>
+  <link rel="preload" href="data/network.geojson" as="fetch" crossorigin>
+  <link rel="preload" href="data/colors.json" as="fetch" crossorigin>
+  <link rel="preload" href="data/hours.json" as="fetch" crossorigin>
+  <link rel="modulepreload" href="js/i18n.js"><link rel="modulepreload" href="js/net.js"><link rel="modulepreload" href="js/data.js"><link rel="modulepreload" href="js/ui.js"><link rel="modulepreload" href="js/detail.js">
+</head>
+<body>
+  <div id="basemap"></div>
+  <main id="screens">
+    <div id="boot" class="boot" aria-hidden="true"><i class="skel pill" style="height:64px"></i><i class="skel line" style="width:34%;margin-top:26px"></i><div class="skel-rows"><div class="skel-row"><i class="skel pill" style="width:52px;height:34px"></i><div><i class="skel line" style="width:62%"></i><i class="skel line" style="width:40%"></i></div></div><div class="skel-row"><i class="skel pill" style="width:52px;height:34px"></i><div><i class="skel line" style="width:48%"></i><i class="skel line" style="width:34%"></i></div></div></div><i class="skel" style="flex:1;border-radius:26px;margin-top:8px"></i></div>
+    <section id="s-home" class="screen" hidden></section>
+    <section id="s-routes" class="screen" hidden></section>
+    <section id="s-plan" class="screen pass" hidden></section>
+    <section id="s-map" class="screen pass" hidden></section>
+    <section id="s-balance" class="screen" hidden></section>
+  </main>
+  <nav id="tabbar" role="tablist"></nav>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
