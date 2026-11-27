@@ -1,5 +1,5 @@
 import { t, getLang } from "../i18n.js";
-import { api } from "../net.js";
+import { apiUrl } from "../net.js";
 import { D, dark, propsOfRid, colorOf, token, onColor } from "../data.js";
 import { fetchBuses } from "../rt.js";
 import { glassSeg, CARD_PATHS, BUS_PATHS, swipeDismiss } from "../ui.js";
@@ -49,7 +49,7 @@ let gTimer = 0, gSeq = 0;
 async function geocode(q, mode = "suggest") {
   const seq = ++gSeq;
   try {
-    const r = await fetch(api(`/api/geocode?q=${encodeURIComponent(q)}&mode=${mode}`));
+    const r = await fetch(apiUrl(`/api/geocode?q=${encodeURIComponent(q)}&mode=${mode}`));
     const j = await r.json();
     return seq === gSeq ? (j.results || []).map((x) => ({ kind: "place", label: x.label, sub: x.sub, lat: x.lat, lon: x.lon })) : null;
   } catch { return []; }
@@ -174,7 +174,7 @@ st.shapes = new Map();
 function loadShapes(q) {
   const need = [...q.rids].filter((r) => !st.shapes.has(r)).slice(0, 8); if (!need.length) return;
   need.forEach((r) => st.shapes.set(r, null));
-  fetch(api("/api/shape?legs=" + need.map((r) => `${r}:0:${Math.max(0, (D.rs.routes[r] || []).length - 1)}`).join(","))).then((r) => r.json())
+  fetch(apiUrl("/api/shape?legs=" + need.map((r) => `${r}:0:${Math.max(0, (D.rs.routes[r] || []).length - 1)}`).join(","))).then((r) => r.json())
     .then((j) => { need.forEach((r, i) => st.shapes.set(r, j.shapes?.[i] || false)); if (st.query === q) draw(); })
     .catch(() => need.forEach((r) => st.shapes.delete(r)));
 }

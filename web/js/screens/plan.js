@@ -1,5 +1,5 @@
 import { t } from "../i18n.js";
-import { api } from "../net.js";
+import { apiUrl } from "../net.js";
 import { D, propsOfRid, dark, token, onColor } from "../data.js";
 import { fetchBuses } from "../rt.js";
 import { locate, locateIfAllowed, lastPos } from "../loc.js";
@@ -35,7 +35,7 @@ function names() {
 let gSeq = 0;
 async function geocode(q, mode) {
   const seq = ++gSeq;
-  try { const j = await (await fetch(api(`/api/geocode?q=${encodeURIComponent(q)}&mode=${mode}`))).json(); return seq === gSeq ? (j.results || []).map((x) => ({ label: x.label, sub: x.sub === "Lugar" ? t("pk_place") : x.sub, pts: [{ lat: x.lat, lon: x.lon }] })) : null; } catch { return []; }
+  try { const j = await (await fetch(apiUrl(`/api/geocode?q=${encodeURIComponent(q)}&mode=${mode}`))).json(); return seq === gSeq ? (j.results || []).map((x) => ({ label: x.label, sub: x.sub === "Lugar" ? t("pk_place") : x.sub, pts: [{ lat: x.lat, lon: x.lon }] })) : null; } catch { return []; }
 }
 function localMatches(q, limit = 5) {
   const n = norm(q.trim()); if (n.length < 2) return [];
@@ -337,7 +337,7 @@ function draw(it) {
   const base = features(it); api.overlay(base.feats, base.fit);
   const m = api.map(); ["plan-walk", "plan-ride", "plan-glow-w", "plan-glow", "plan-stop", "plan-pt"].forEach((x) => m.getLayer(x) && m.setLayoutProperty(x, "visibility", "visible"));
   const rides = it.legs.filter((l) => l.t === "ride");
-  const get = (q) => fetch(api("/api/shape?" + q)).then((r) => r.json());
+  const get = (q) => fetch(apiUrl("/api/shape?" + q)).then((r) => r.json());
   // 1) recorrido de cada bus por las calles; 2) caminatas por las calles entre los puntos resultantes
   get("legs=" + rides.map((l) => `${l.rid}:${l.p0}:${l.p1}`).join(",")).then(async (j) => {
     if (mine !== drawSeq) return;

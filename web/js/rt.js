@@ -1,5 +1,5 @@
 // Buses en vivo: GTFS‑RT (protobuf) de /api/rt + estimados de /api/est. Backend: ../backend/README.md
-import { api } from "./net.js";
+import { apiUrl } from "./net.js";
 const varint = (b, i) => { let r = 0, s = 0, x; do { x = b[i++]; r += (x & 127) * 2 ** s; s += 7; } while (x & 128); return [r, i]; };
 function fields(b, i, end, cb) {
   while (i < end) {
@@ -53,16 +53,16 @@ export function decodeAlerts(b) {
   return out;
 }
 export async function fetchBuses() {
-  const r = await fetch(api("/api/rt"), { cache: "no-store" });
+  const r = await fetch(apiUrl("/api/rt"), { cache: "no-store" });
   if (!r.ok) throw new Error("rt_" + r.status);
   const list = decodePositions(new Uint8Array(await r.arrayBuffer()));
   const now = Date.now() / 1000;
   const fresh = list.filter((v) => !v.ts || now - v.ts < 300);
-  try { const e = await fetch(api("/api/est"), { cache: "no-store" }); if (e.ok) fresh.push(...(await e.json()).vehicles.map((v) => ({ ...v, est: true }))); } catch {}
+  try { const e = await fetch(apiUrl("/api/est"), { cache: "no-store" }); if (e.ok) fresh.push(...(await e.json()).vehicles.map((v) => ({ ...v, est: true }))); } catch {}
   return fresh;
 }
 export async function fetchAlerts() {
-  const r = await fetch(api("/api/alerts"), { cache: "no-store" });
+  const r = await fetch(apiUrl("/api/alerts"), { cache: "no-store" });
   if (!r.ok) throw new Error("alerts_" + r.status);
   return decodeAlerts(new Uint8Array(await r.arrayBuffer()));
 }
