@@ -24,7 +24,7 @@ const S = {
   },
 };
 Object.assign(S.es, {
-  offlineMsg: "Sin conexión. Se muestra lo que ya se guardó.", onlineMsg: "De vuelta en línea", obSkip: "Saltar", obNext: "Continuar", obStart: "Empezar", obLang: "Idioma", obStep: "Paso {n} de {t}",
+  offlineMsg: "Sin conexión. Se muestra lo que ya se guardó.", onlineMsg: "De vuelta en línea", sitpStops: "Paraderos SITP", xfer1: "1 transbordo", xferN: "{n} transbordos", optTop: "Solo TransMilenio o un solo bus SITP", optRest: "Otras rutas · {n}", optAll: "Todas las opciones · {n}", obSkip: "Saltar", obNext: "Continuar", obStart: "Empezar", obLang: "Idioma", obStep: "Paso {n} de {t}",
   obWelcomeT: "Bienvenido a Ruta", obWelcomeS: "Buses, TransMilenio y cable de Bogotá, en un solo lugar.",
   obF1: "Rutas y horarios", obF2: "Planea tu viaje", obF3: "Buses en el mapa", obF4: "Saldo de tu tarjeta",
   obPrefT: "Hazlo tuyo", obPrefS: "Elige idioma y apariencia. Puedes cambiarlos después en Inicio.",
@@ -32,7 +32,7 @@ Object.assign(S.es, {
   obTourT: "Así se usa", pkClose: "Cerrar", obTourS: "Toca cualquier bus o paradero para ver el detalle. Para cerrarlo, desliza hacia abajo.", 
 });
 Object.assign(S.en, {
-  offlineMsg: "You're offline. Showing what's already saved.", onlineMsg: "Back online", obSkip: "Skip", obNext: "Continue", obStart: "Get started", obLang: "Language", obStep: "Step {n} of {t}",
+  offlineMsg: "You're offline. Showing what's already saved.", onlineMsg: "Back online", sitpStops: "SITP stops", xfer1: "1 transfer", xferN: "{n} transfers", optTop: "TransMilenio only or one SITP bus", optRest: "Other routes · {n}", optAll: "All options · {n}", obSkip: "Skip", obNext: "Continue", obStart: "Get started", obLang: "Language", obStep: "Step {n} of {t}",
   obWelcomeT: "Welcome to Ruta", obWelcomeS: "Buses, TransMilenio and cable cars in Bogotá, all in one place.",
   obF1: "Routes and schedules", obF2: "Plan your trip", obF3: "Buses on the map", obF4: "Your card balance",
   obPrefT: "Make it yours", obPrefS: "Pick a language and appearance. You can change them later on Home.",

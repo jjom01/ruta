@@ -1,11 +1,13 @@
 import { t, getLang } from "../i18n.js";
 import { apiUrl } from "../net.js";
-import { D, dark, propsOfRid, colorOf, token, onColor } from "../data.js";
+import { D, SITP_COLOR, dark, propsOfRid, colorOf, token, onColor } from "../data.js";
 import { fetchBuses } from "../rt.js";
 import { glassSeg, CARD_PATHS, BUS_PATHS, swipeDismiss } from "../ui.js";
 // Símbolos del selector: tarjeta (puntos de recarga) y bus (red y rutas), los mismos dibujos de la barra de pestañas.
 const CARD_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true">${CARD_PATHS}</svg>`;
 const TM_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true">${BUS_PATHS}</svg>`;
+// Parada SITP con el mismo dibujo del bus: cuerpo redondeado, línea y luces que quedan caladas al llenarse, y patas
+const SITP_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="12" rx="3.2"/><path class="k" d="M5 9.5h14"/><circle class="k" cx="8.6" cy="12.5" r="1"/><circle class="k" cx="15.4" cy="12.5" r="1"/><path d="M12 15.5V21M8.5 21h7"/></svg>`;
 import { simulated, locate, lastPos } from "../loc.js";
 import { goRoutes, goStop, openStop } from "../detail.js";
 
@@ -60,7 +62,7 @@ function init(el) {
   if (st.el) return; // ya iniciada (p. ej. por Planear vía ensure()): no crear un segundo mapa
   st.el = el;
   el.innerHTML = `
-    <div class="seg glassy map-filters" id="mf" role="group"><button type="button" data-m="recharge" aria-pressed="false" aria-label="${t("rechargePts")}" title="${t("rechargePts")}">${CARD_ICON}</button><button type="button" data-m="map" aria-pressed="true" aria-label="${t("mapMode")}" title="${t("mapMode")}">${TM_ICON}</button></div>
+    <div class="seg glassy map-filters" id="mf" role="group"><button type="button" data-m="recharge" aria-pressed="false" aria-label="${t("rechargePts")}" title="${t("rechargePts")}">${CARD_ICON}</button><button type="button" data-m="map" aria-pressed="true" aria-label="${t("mapMode")}" title="${t("mapMode")}">${TM_ICON}</button><button type="button" data-m="sitp" aria-pressed="false" aria-label="${t("sitpStops")}" title="${t("sitpStops")}">${SITP_ICON}</button></div>
     <div class="rcard" id="rcard" hidden></div>
     <button class="help" id="help" type="button" aria-label="${t("legend")}" aria-expanded="false">?</button>
     <section class="legend" id="legend" hidden aria-label="${t("legend")}"></section>
@@ -100,7 +102,7 @@ function toggleLegend() {
     box.innerHTML = `<button class="x" id="lx" aria-label="${t("close")}">×</button>
       ${row(line("var(--fg)"), t("lgTrunk"))}${row(line("var(--fg)", true), t("lgMixed"))}${row(line(GREY), t("lgOther"))}${row(dot("#fff", "#111"), t("lgStation"))}
       ${row(busDot(colorOf("D", "troncal"), 1), t("lgBus"))}${row(estDot(colorOf("D", "troncal")), t("lgEst"))}
-      ${row(line(colorOf("Z", "zonal")), t("lgSitp"))}${row(line(colorOf("T", "cable")), t("lgCable"))}${row(dot("#2F80FF", "#fff"), t("lgYou"))}
+      ${row(line(colorOf("Z", "zonal")), t("lgSitp"))}${row(dot(SITP_COLOR[m], dark() ? "#140C0E" : "#fff"), t("sitpStops"))}${row(line(colorOf("T", "cable")), t("lgCable"))}${row(dot("#2F80FF", "#fff"), t("lgYou"))}
       <div class="lg-h">${t("lgLines")}</div><div class="lg-grid">${letters}</div>`;
     box.querySelector("#lx").onclick = toggleLegend;
   }
@@ -381,16 +383,42 @@ function buildNetwork() {
   const stations = D.network.features.filter((f) => f.properties.st);
   return (network = { lines: owned, stations });
 }
-/* ---------- modo: Mapa (red y rutas) / Puntos de recarga ---------- */
+/* ---------- filtro: paraderos SITP ---------- */
+// Un paradero cuenta como SITP si pasa por él alguna ruta del grupo SITP (la misma regla del filtro SITP de Rutas)
+const SITP_LAYERS = ["sitpPt", "sitpHit"];
+// En el filtro SITP se ocultan la red troncal y sus estaciones; las rutas buscadas y los buses se siguen viendo
+const TRUNK_LAYERS = ["net", "netMixed", "stations", "stationsHit"];
+function sitpData() {
+  if (st.sitpData) return st.sitpData;
+  const ids = new Set();
+  for (const [rid, stops] of Object.entries(D.rs.routes)) if (propsOfRid(rid)?.group === "sitp") stops.forEach((i) => ids.add(i));
+  const seen = new Set(), features = [];
+  for (const i of ids) {
+    const [name, lat, lon] = D.rs.stops[i], k = name + "|" + lat.toFixed(5) + "|" + lon.toFixed(5);
+    if (seen.has(k)) continue; seen.add(k);
+    features.push({ type: "Feature", geometry: { type: "Point", coordinates: [lon, lat] }, properties: { n: name } });
+  }
+  return (st.sitpData = { type: "FeatureCollection", features });
+}
+// Solo en el filtro SITP y fuera de Planear, que usa el mismo mapa
+function applySitp() {
+  const m = st.map; if (!st.ready || !m) return;
+  const on = st.mode === "sitp" && !document.body.classList.contains("on-plan");
+  if (on && !st.sitpFed && m.getSource("sitp")) { m.getSource("sitp").setData(sitpData()); st.sitpFed = true; }
+  for (const id of SITP_LAYERS) m.getLayer(id) && m.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+}
+
+/* ---------- filtro: Puntos de recarga / TransMilenio / SITP ---------- */
 const MODE_LAYERS = ["net", "netMixed", "stations", "stationsHit", "lines", "qstops", "bus-beam", "buses", "buses-est"];
 function applyMode() {
   const m = st.map; if (!st.ready || !m) return;
   const rc = st.mode === "recharge";
-  for (const id of MODE_LAYERS) m.getLayer(id) && m.setLayoutProperty(id, "visibility", rc ? "none" : "visible");
+  for (const id of MODE_LAYERS) m.getLayer(id) && m.setLayoutProperty(id, "visibility", rc || (st.mode === "sitp" && TRUNK_LAYERS.includes(id)) ? "none" : "visible");
   for (const id of ["shopCl", "shopPt", "shopHit"]) m.getLayer(id) && m.setLayoutProperty(id, "visibility", rc ? "visible" : "none");
   document.querySelectorAll("#mf button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === st.mode)));
   const card = $("#rcard"); if (card) card.hidden = true;   // la ficha solo aparece al tocar un punto
   $("#help")?.toggleAttribute("hidden", rc);
+  applySitp();
   if (rc) { $("#sugg").innerHTML = ""; loadShops(); }
 }
 function setMode(mode) {
@@ -483,6 +511,10 @@ function initMapNow() {
     if (!map.getLayer("shopCl")) map.addLayer({ id: "shopCl", type: "circle", source: "shops", filter: ["has", "point_count"], layout: { visibility: "none" }, paint: { "circle-color": money(), "circle-opacity": 0.3, "circle-radius": ["interpolate", ["linear"], ["get", "point_count"], 2, 9, 20, 15, 100, 23, 400, 34], "circle-stroke-width": 1.5, "circle-stroke-color": money(), "circle-stroke-opacity": 0.85 } });
     if (!map.getLayer("shopPt")) map.addLayer({ id: "shopPt", type: "circle", source: "shops", filter: ["!", ["has", "point_count"]], layout: { visibility: "none" }, paint: { "circle-color": money(), "circle-opacity": 0.6, "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3.5, 17, 8], "circle-stroke-width": 1.5, "circle-stroke-color": money(), "circle-stroke-opacity": 0.95 } });
     if (!map.getLayer("shopHit")) map.addLayer({ id: "shopHit", type: "circle", source: "shops", filter: ["!", ["has", "point_count"]], layout: { visibility: "none" }, paint: { "circle-radius": 18, "circle-color": "#000", "circle-opacity": 0 } });
+    if (!map.getSource("sitp")) { map.addSource("sitp", { type: "geojson", data: { type: "FeatureCollection", features: [] } }); st.sitpFed = false; }
+    const sc = SITP_COLOR[dark() ? "dark" : "light"], ring = dark() ? "#140C0E" : "#FFFFFF";
+    if (!map.getLayer("sitpPt")) map.addLayer({ id: "sitpPt", type: "circle", source: "sitp", layout: { visibility: "none" }, paint: { "circle-color": sc, "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 1.1, 11.5, 1.6, 13, 2.8, 15, 4.5, 17, 7], "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 12, 0, 13, 1, 16, 2.2], "circle-stroke-color": ring } });
+    if (!map.getLayer("sitpHit")) map.addLayer({ id: "sitpHit", type: "circle", source: "sitp", minzoom: 13, layout: { visibility: "none" }, paint: { "circle-radius": 16, "circle-color": "#000", "circle-opacity": 0 } });
     if (!map.getLayer("lines")) map.addLayer({ id: "lines", type: "line", source: "lines", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": ["get", "color"], "line-width": 5.5, "line-opacity": 1 } });
     if (!map.getLayer("qstops")) map.addLayer({ id: "qstops", type: "circle", source: "qstops", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2.6, 15, 6.5], "circle-color": "#fff", "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 10, 1.6, 15, 3], "circle-stroke-color": ["get", "color"] } });
     if (!map.getLayer("bus-beam")) map.addLayer({ id: "bus-beam", type: "symbol", source: "buses", filter: ["==", ["get", "dir"], 1], layout: { "icon-image": ["get", "beam"], "icon-rotate": ["get", "bearing"], "icon-rotation-alignment": "map", "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-size": 1.3 }, paint: { "icon-opacity": ["case", ["==", ["get", "est"], 1], 0.55, 1] } });
@@ -508,6 +540,9 @@ function initMapNow() {
   map.on("click", "shopHit", (e) => { const f = e.features[0]; showShop(f); map.easeTo({ center: f.geometry.coordinates, duration: 400 }); });
   map.on("click", "shopCl", (e) => { const f = e.features[0]; map.getSource("shops").getClusterExpansionZoom(f.properties.cluster_id).then((z) => map.easeTo({ center: f.geometry.coordinates, zoom: Math.min(17, z + 0.5), duration: 450 })).catch(() => {}); });
   for (const id of ["shopHit", "shopCl"]) { map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer")); map.on("mouseleave", id, () => (map.getCanvas().style.cursor = "")); }
+  // Paradero SITP: abre su ficha sin salir del mapa
+  map.on("click", "sitpHit", (e) => { if (map.queryRenderedFeatures(e.point, { layers: ["stationsHit", "buses"].filter((l) => map.getLayer(l)) }).length) return; openStop(e.features[0].properties.n); });
+  for (const id of ["sitpHit"]) { map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer")); map.on("mouseleave", id, () => (map.getCanvas().style.cursor = "")); }
   map.on("click", "stationsHit", (e) => {
     const [lon, lat] = e.features[0].geometry.coordinates, kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
     const tm = trunkStops(), norm = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""), want = norm(e.features[0].properties.n || "");
@@ -561,7 +596,7 @@ const api = { showStop(lon, lat, name) {
   glow: () => startGlow(),
   planFit(fit) { st.fit = fit; },
   refit(bottom) { const m = st.map; if (!m || !st.fit?.length) return; const b = new maplibregl.LngLatBounds(); st.fit.forEach((c) => b.extend(c)); m.fitBounds(b, { padding: { top: 90, left: 50, right: 50, bottom }, duration: 500 }); },
-  setMode: (m) => { setMode(m); }, ensure, map: () => st.map, ready: () => whenMap().then((m) => (st.ready ? m : new Promise((r) => m.once("idle", () => r(m))))),
+  setMode: (m) => { setMode(m); }, mode: () => st.mode, ensure, map: () => st.map, ready: () => whenMap().then((m) => (st.ready ? m : new Promise((r) => m.once("idle", () => r(m))))),
   // Capa de itinerario (planear viaje): líneas y puntos sobre la red.
   overlay(features, fit) {
     const run = () => { const m = st.map; if (!m.getSource("plan")) { m.addSource("plan", { type: "geojson", lineMetrics: true, data: { type: "FeatureCollection", features: [] } });
@@ -578,6 +613,6 @@ const api = { showStop(lon, lat, name) {
       if (fit?.length) { st.fit = fit; const b = new maplibregl.LngLatBounds(); fit.forEach((c) => b.extend(c)); m.fitBounds(b, { padding: { top: 90, left: 50, right: 50, bottom: 360 }, duration: 700 }); } };
     st.ready ? run() : whenMap().then((m) => (st.ready ? run() : m.once("idle", run)));
   },
-  dim(v) { st.dim = v; draw(); },
+  dim(v) { st.dim = v; draw(); applySitp(); },
 };
 export default { init, show: () => { st.dim = false; st.map?.resize(); draw(); st.map?.getLayer("plan-ride") && ["plan-walk", "plan-ride", "plan-glow-w", "plan-glow", "plan-stop", "plan-pt"].forEach((l) => st.map.setLayoutProperty(l, "visibility", "none")); }, api };

@@ -1,5 +1,5 @@
 // GENERADO por backend/tools/build-sw.mjs — no editar a mano.
-const VERSION = "fb0af647b8";
+const VERSION = "8d1e5509f1";
 const SHELL = "ruta-app-" + VERSION;      // la app: HTML, CSS, JS, datos e iconos
 const LIBS = "ruta-libs-v1";              // MapLibre y tipografías (versionadas en su URL: nunca cambian)
 const TILES = "ruta-tiles-v1";            // teselas del mapa que ya se vieron

@@ -183,22 +183,30 @@ async function search() {
   try { [res, st.buses] = await Promise.all([planAsync(origins, dests), fetchBuses().catch(() => [])]); } catch { res = null; }
   if (mine !== sSeq) return;
   let tooFar = false;
-  const kinds = [["direct", "kDirect"], ["tm", "kTm"], ["sitp", "kSitp"], ["mixed", "kMixed"]], seen = new Set(), list = [];
-  for (const [k, lab] of kinds) {
-    const it = res?.[k]; if (!it) continue; if (it.walk > 75 * 60) { tooFar = true; continue; } // más de 75 min a pie no es una ruta útil
-    const sig = it.legs.filter((l) => l.t === "ride").map((l) => `${l.rid}:${l.from}>${l.to}`).join("|");
-    if (seen.has(sig)) continue; seen.add(sig); list.push({ it, label: t(lab) });
-  }
+  tooFar = ["direct", "tm", "sitp", "mixed"].some((k) => res?.[k]?.walk > 75 * 60); // más de 75 min a pie no es una ruta útil
+  // todas las opciones, de la más rápida a la más lenta, con su tipo y sus transbordos
+  const list = (res?.options || []).map((it) => ({
+    it, label: t(it.allTm ? "kTm" : it.allSitp ? "kSitp" : "kMixed") + " · " + (it.rides === 1 ? t("kDirect") : it.rides === 2 ? t("xfer1") : t("xferN", { n: it.rides - 1 })),
+  }));
   if (!list.length) {
     if (gap < 2200) return msg(t("walkN2", { n: Math.max(1, Math.round(gap * 1.3 / 80)) }));
     const far = (ps) => Math.min(...ps.flatMap((p) => D.rs.stops.map((s) => hav(p, { lat: s[1], lon: s[2] })))) > 6000;
     return msg(tooFar || far(origins) || far(dests) ? t("outOfCover") : t("noRoute"));
   }
   list.sort((a, b) => a.it.total - b.it.total);
-  renderResults(list);
+  renderResults(...featuredFirst(list));
 }
 
 /* ---------- resultados ---------- */
+/* Las dos primeras: la mejor solo en TransMilenio y el mejor viaje en un solo bus SITP. Si falta una de las dos clases,
+   el puesto lo toma la siguiente de la otra. Devuelve la lista reordenada y cuántas van arriba. */
+function featuredFirst(list) {
+  const tmOnly = list.filter((x) => x.it.allTm), oneSitp = list.filter((x) => x.it.rides === 1 && x.it.allSitp);
+  const top = [tmOnly[0], oneSitp[0]].filter(Boolean);
+  for (const x of [...tmOnly, ...oneSitp].sort((a, b) => a.it.total - b.it.total)) if (top.length < 2 && !top.includes(x)) top.push(x);
+  top.sort((a, b) => a.it.total - b.it.total);
+  return [[...top, ...list.filter((x) => !top.includes(x))], top.length];
+}
 function etaFirst(leg) {
   const idx = D.rs.routes[leg.rid], tm = D.rs.times[leg.rid]; if (!idx || !tm) return null;
   let best = null;
@@ -237,7 +245,7 @@ function grabber(box) {
   addEventListener("resize", onResize);
   g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); settle(!box.classList.contains("peek")); } });
 }
-function renderResults(list) {
+function renderResults(list, featured = 0) {
   const box = $("#res"); box.hidden = false; box.innerHTML = ""; box.scrollTop = 0;
   box.classList.remove("peek", "dragging"); box.classList.add("rich"); box.style.removeProperty("--drop");
   grabber(box);
@@ -253,16 +261,20 @@ function renderResults(list) {
   body.onscroll = () => { cap(); if (!raf) raf = requestAnimationFrame(mark); };
   const select = (c, it, scroll, open = true) => {
     const was = c.classList.contains("open");
+    const tl = c.querySelector(".tl"); if (open && !tl.firstChild) tl.innerHTML = timeline(it);   // el detalle se arma al abrirlo: la lista puede ser larga
     cards.forEach((o) => { const on = o === c && open && !(was && scroll); o.classList.toggle("open", on); o.classList.toggle("sel", o === c); o.querySelector(".top").setAttribute("aria-expanded", on); });
     draw(it);
     if (scroll) setTimeout(() => body.scrollTo({ top: Math.max(0, c.offsetTop - 4), behavior: "smooth" }), 40);
   };
+  const heading = (txt) => { const h = document.createElement("h3"); h.className = "rhead"; h.textContent = txt; body.append(h); };
   list.forEach(({ it, label }, n) => {
-    const c = document.createElement("article"); c.className = "card"; c.style.setProperty("--i", n);
+    if (featured && n === 0) heading(t("optTop"));
+    if (n === featured && n < list.length) heading(t(featured ? "optRest" : "optAll", { n: list.length - featured }));
+    const c = document.createElement("article"); c.className = "card"; c.style.setProperty("--i", Math.min(n, 6));
     const rides = it.legs.filter((l) => l.t === "ride");
     const badges = rides.map((l) => tile(propsOfRid(l.rid) || { color: "#888" }, l.code)).join('<i class="chev">›</i>');
     const stopsN = rides.reduce((a, l) => a + l.stops, 0);
-    c.innerHTML = `<button class="top" aria-expanded="false"><span class="grow"><span class="chips">${badges}</span><span class="sub mono">${esc(label)} · ${t("rideN", { n: stopsN })} · ${t("walkN", { n: mins(it.walk) })}</span></span><span class="total">${mins(it.total)} <small>${t("minShort")}</small></span></button><div class="body"><div class="tl">${timeline(it)}</div></div>`;
+    c.innerHTML = `<button class="top" aria-expanded="false"><span class="grow"><span class="chips">${badges}</span><span class="sub mono">${esc(label)} · ${t("rideN", { n: stopsN })} · ${t("walkN", { n: mins(it.walk) })}</span></span><span class="total">${mins(it.total)} <small>${t("minShort")}</small></span></button><div class="body"><div class="tl"></div></div>`;
     c.querySelector(".top").addEventListener("click", () => select(c, it, true));
     c.addEventListener("click", (e) => { const r = e.target.closest(".run"); if (r) r.closest(".leg").classList.toggle("open"); });
     body.append(c); cards.push(c); ro.observe(c);
@@ -348,8 +360,9 @@ function draw(it) {
     const f2 = features(it, shapes.some(Boolean) ? shapes : null, w.walks); api.overlay(f2.feats, null); api.planFit?.(f2.fit);
   }).catch(() => {});
 }
+let backToSitp = false;
 export default {
   init,
-  show() { mapScreen.api.reset?.(); mapScreen.api.glow?.(); mapScreen.api.setMode?.("map"); document.body.classList.add("on-plan"); mapScreen.api.map()?.resize(); mapScreen.api.dim(true); const m = mapScreen.api.map(); if (m) ["plan-walk", "plan-ride", "plan-glow-w", "plan-glow", "plan-stop", "plan-pt"].forEach((x) => m.getLayer(x) && m.setLayoutProperty(x, "visibility", "visible")); },
-  hide() { document.body.classList.remove("on-plan"); mapScreen.api.dim(false); },
+  show() { mapScreen.api.reset?.(); mapScreen.api.glow?.(); backToSitp = mapScreen.api.mode?.() === "sitp"; mapScreen.api.setMode?.("map"); document.body.classList.add("on-plan"); mapScreen.api.map()?.resize(); mapScreen.api.dim(true); const m = mapScreen.api.map(); if (m) ["plan-walk", "plan-ride", "plan-glow-w", "plan-glow", "plan-stop", "plan-pt"].forEach((x) => m.getLayer(x) && m.setLayoutProperty(x, "visibility", "visible")); },
+  hide() { document.body.classList.remove("on-plan"); mapScreen.api.dim(false); if (backToSitp) mapScreen.api.setMode("sitp"); },
 };

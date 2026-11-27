@@ -250,13 +250,128 @@ const PL = (() => {
     rides.forEach((i, n) => { const l = it.legs[i]; l.alts = altsFor(l, mode, n === 0 ? fw : null, n === rides.length - 1 ? lw : null); });
   }
 
+  /* ---------- todas las opciones ----------
+     Se reúnen: cada bus que sirve solo (directo), cada combinación de dos buses con un transbordo a ≤ 250 m, y recorridos de
+     tres o más buses (se repite la búsqueda quitando cada vez el primer bus ya usado, para que salgan caminos distintos).
+     Una opción es una secuencia de buses (p. ej. 330 › F423 › F28): de cada secuencia se guarda su mejor forma.
+     Se descartan las que no sirven a nadie: mucho más lentas que la mejor, con más de 75 min a pie, o con un transbordo que sobra. */
+  const MAX_OPTIONS = 80, MAX_WALK_SEC = 75 * 60;
+  const rideLeg = (ri, i, j) => {
+    const rid = G.rids[ri], info = ridx[rid], list = rstops.routes[rid], times = rstops.times[rid];
+    return { t: "ride", rid, code: info.c, sys: info.s, from: list[i], to: list[j], p0: i, p1: j, stops: j - i, sec: Math.abs(times[j] - times[i]), wait: G.rWait[ri], toward: towardOf(rid, i) };
+  };
+  // un viaje armado con uno o dos tramos conocidos: [[ruta, subida, bajada], ...]
+  function compose(parts, origins, dests) {
+    const legs = [];
+    let prev = null;
+    for (const [ri, i, j] of parts) {
+      const leg = rideLeg(ri, i, j);
+      if (prev == null) legs.push({ t: "walk", m: hav(closest(origins, pt(leg.from)), pt(leg.from)), to: leg.from });
+      else if (prev !== leg.from) legs.push({ t: "xfer", m: hav(pt(prev), pt(leg.from)), from: prev, to: leg.from });
+      legs.push(leg); prev = leg.to;
+    }
+    const first = legs.find((l) => l.t === "ride"), dest = closest(dests, pt(prev));
+    legs.push({ t: "walk", m: hav(pt(prev), dest), dest: true });
+    return { ...summarize(legs), origin: closest(origins, pt(first.from)), dest };
+  }
+  // mejor subida y bajada de cada ruta para ir en un solo bus, y de cada pareja de rutas para ir con un transbordo
+  function directAndPairs(od, dd) {
+    const g = G, W = PROFILES.fast.walkW, singles = new Map(), pairs = new Map();
+    const codeOf = g.rids.map((r) => ridx[r].c);
+    // lado del destino: desde cada posición de cada ruta, la mejor bajada (costo ponderado sin contar la espera)
+    const exit = g.rids.map((rid, ri) => {
+      if (g.off[ri]) return null;
+      const list = rstops.routes[rid], times = rstops.times[rid], cost = new Float64Array(list.length).fill(Infinity), at = new Int32Array(list.length).fill(-1);
+      let best = Infinity, bq = -1, any = false;
+      for (let q = list.length - 1; q >= 0; q--) {
+        if (bq >= 0) { cost[q] = best - times[q]; at[q] = bq; }
+        const d = dd[list[q]];
+        if (d >= 0) { const v = times[q] + walkSec(d) * W; if (v < best) { best = v; bq = q; any = true; } }
+      }
+      return any ? { cost, at } : null;
+    });
+    g.rids.forEach((rid, ri) => {
+      if (g.off[ri]) return;
+      const list = rstops.routes[rid], times = rstops.times[rid];
+      let start = Infinity, si = -1;                      // mejor subida antes de la posición actual
+      for (let j = 0; j < list.length; j++) {
+        if (si >= 0) {
+          const reach = start + times[j] + g.rWait[ri], a = list[j];
+          if (dd[a] >= 0 && list[si] !== a) {
+            const total = reach + walkSec(dd[a]) * W, key = codeOf[ri], cur = singles.get(key);
+            if (!cur || total < cur.w) singles.set(key, { w: total, parts: [[ri, si, j]] });
+          }
+          const nb = stopNear(a);
+          for (let n = -1; n < nb.ids.length; n++) {      // -1: transbordo en el mismo paradero
+            const b = n < 0 ? a : nb.ids[n], walk = n < 0 ? 0 : (walkSec(nb.d[n]) + XFER_SEC) * W;
+            for (let q = g.sbStart[b]; q < g.sbStart[b + 1]; q++) {
+              const bk = g.sbList[q], r2 = g.bRoute[bk], e = exit[r2];
+              if (!e || codeOf[r2] === codeOf[ri]) continue;
+              const pos = g.bPos[bk];
+              if (e.at[pos] < 0) continue;
+              const total = reach + walk + g.rWait[r2] + PROFILES.fast.board + e.cost[pos], key = codeOf[ri] + ">" + codeOf[r2], cur = pairs.get(key);
+              if (!cur || total < cur.w) pairs.set(key, { w: total, parts: [[ri, si, j], [r2, pos, e.at[pos]]] });
+            }
+          }
+        }
+        const d = od[list[j]];
+        if (d >= 0) { const v = walkSec(d) * W - times[j]; if (v < start) { start = v; si = j; } }
+      }
+    });
+    return [...singles.values(), ...pairs.values()];
+  }
+  const codesOf = (it) => it.legs.filter((l) => l.t === "ride").map((l) => l.code);
+  function allOptions(origins, dests, od, dd, oSeeds, tmSeeds, tdd) {
+    const g = G, byKey = new Map();
+    const add = (it) => {
+      if (!it || !it.rides || it.walk > MAX_WALK_SEC) return;
+      const codes = codesOf(it);
+      if (codes.some((c, i) => codes.indexOf(c) !== i)) return;      // volver a subir al mismo bus no es una opción
+      const key = codes.join(">"), cur = byKey.get(key);
+      if (!cur || it.total < cur.total) byKey.set(key, it);
+    };
+    for (const c of directAndPairs(od, dd)) add(compose(c.parts, origins, dests));
+    // tres o más buses: la búsqueda por sistema, quitando cada vez el primer bus del camino que ya se encontró
+    const base = g.off, runs = [["mixed", "fast", oSeeds, dd], ["any", "fast", oSeeds, dd], ["any", "few", oSeeds, dd], ["sitp", "fast", oSeeds, dd], ["tm", "fast", tmSeeds, tdd], ["tm", "few", tmSeeds, tdd]];
+    for (const [mode, profile, seeds, target] of runs) {
+      g.off = base.slice();
+      for (let round = 0; round < 4; round++) {
+        const it = search(PROFILES[profile], mode, origins, dests, seeds, target);
+        if (!it) break;
+        add(it);
+        const first = it.legs.find((l) => l.t === "ride"), ri = g.rids.indexOf(first.rid);
+        if (ri < 0 || g.off[ri]) break;
+        g.off[ri] = 1;
+      }
+    }
+    g.off = base;
+    const found = [...byKey.values()].sort((a, b) => a.total - b.total || a.rides - b.rides || a.walk - b.walk);
+    if (!found.length) return [];
+    const best = found[0].total, limit = Math.max(best * 1.5, best + 20 * 60);
+    // un transbordo sobra si con menos buses de la misma lista se llega igual o antes
+    const kept = [], tmOk = (it) => it.legs.every((l) => l.t !== "ride" || isTm(l.sys));
+    const within = (small, big) => { let k = 0; for (const c of big) if (c === small[k]) k++; return k === small.length; };
+    for (const it of found) {
+      const codes = codesOf(it);
+      const spare = found.some((o) => o.rides < it.rides && o.total <= it.total + 120 && within(codesOf(o), codes));
+      if (!spare) kept.push(it);
+    }
+    const fits = kept.filter((it) => it.total <= limit);
+    // la mejor solo TransMilenio y el mejor bus SITP directo se conservan aunque sean más lentos que el límite
+    for (const pick of [kept.find(tmOk), kept.find((it) => it.rides === 1 && !tmOk(it))]) if (pick && !fits.includes(pick)) fits.push(pick);
+    const top = fits.slice(0, MAX_OPTIONS);
+    for (const it of fits.slice(MAX_OPTIONS)) if ((tmOk(it) && !top.some(tmOk)) || (it.rides === 1 && !tmOk(it) && !top.some((o) => o.rides === 1 && !tmOk(o)))) top.push(it);
+    top.forEach((it) => { it.allTm = tmOk(it); it.allSitp = it.legs.every((l) => l.t !== "ride" || !isTm(l.sys)); });
+    return top;
+  }
+
   /* Si con el límite normal de caminata no hay ninguna opción, se amplía por pasos (3 y 6 km en línea recta) antes de rendirse:
      casi siempre queda algún bus que sirva aunque haya que caminar más. out.radius indica el límite con el que se halló. */
   function plan(origins, dests, off) {
     let out = null;
     for (const R of [MAX_WALK, 3000, 6000]) {
       out = planAt(origins, dests, off, R);
-      if (out.direct || out.tm || out.sitp || out.mixed) { out.radius = R; return out; }
+      if (out.options.length || out.direct || out.tm || out.sitp || out.mixed) { out.radius = R; return out; }
     }
     return out;
   }
@@ -281,6 +396,7 @@ const PL = (() => {
       tmFrom = to;
       out.tm = search(PROFILES.fast, "tm", origins, dests, [...to], tdd);
     }
+    out.options = allOptions(origins, dests, od, dd, oSeeds, [...tmFrom], tdd);
     // cada tramo en bus lleva todas las rutas que van de su parada de subida a la de bajada (el cliente las ordena por el bus más próximo)
     const odTm = new Float32Array(G.S).fill(-1); tmFrom.forEach((d, k) => (odTm[k] = d));
     addAlts(out.direct, "any", od, dd); addAlts(out.tm, "tm", odTm, tdd); addAlts(out.sitp, "sitp", od, dd); addAlts(out.mixed, "leg", od, dd);
